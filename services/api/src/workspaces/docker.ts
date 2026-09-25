@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { PassThrough, Readable } from "node:stream";
 import Docker from "dockerode";
+import { assertWorkspaceHostBoundary } from "./isolation.js";
 import {
   assertWorkspaceId,
   type CreateWorkspace,
@@ -24,7 +25,16 @@ const KIND = "workspace-v2";
 export class DockerWorkspaceRuntime implements WorkspaceRuntime {
   readonly provider = "docker" as const;
 
+  private readonly isolationFactsByWorkspace = new Map<
+    string,
+    { hostDockerSocketMounted: boolean; hostNetwork: boolean; privileged: boolean }
+  >();
+
   constructor(private readonly docker = new Docker()) {}
+
+  isolationFacts(workspaceId: string) {
+    return this.isolationFactsByWorkspace.get(workspaceId);
+  }
 
   async create(input: CreateWorkspace): Promise<WorkspaceHandle> {
     assertWorkspaceId(input.id);
@@ -45,6 +55,7 @@ export class DockerWorkspaceRuntime implements WorkspaceRuntime {
       Name: names.volume,
       Labels: { [WORKSPACE_LABEL]: input.id, [KIND_LABEL]: KIND },
     });
+    const createdHostConfig = hostConfig(names, input);
     const container = await this.docker.createContainer({
       name: names.container,
       Image: input.image,
@@ -60,22 +71,14 @@ export class DockerWorkspaceRuntime implements WorkspaceRuntime {
       ExposedPorts: Object.fromEntries(
         gatewayPorts.map(({ gatewayPort }) => [`${gatewayPort}/tcp`, {}]),
       ),
-      HostConfig: {
-        Init: true,
-        AutoRemove: false,
-        Privileged: true,
-        NetworkMode: names.network,
-        Memory: Math.max(512, input.resources?.memoryMb ?? 4_096) * 1024 * 1024,
-        NanoCpus: Math.max(0.5, input.resources?.cpu ?? 2) * 1_000_000_000,
-        PidsLimit: 4_096,
-        Mounts: [{ Type: "volume", Source: names.volume, Target: "/workspace", ReadOnly: false }],
-        PortBindings: Object.fromEntries(
-          gatewayPorts.map(({ gatewayPort }) => [
-            `${gatewayPort}/tcp`,
-            [{ HostIp: "127.0.0.1", HostPort: "" }],
-          ]),
-        ),
-      },
+      HostConfig: createdHostConfig,
+    });
+    this.isolationFactsByWorkspace.set(input.id, {
+      hostDockerSocketMounted: mountSources(createdHostConfig).some(
+        (source) => source === "/var/run/docker.sock" || source.endsWith("/docker.sock"),
+      ),
+      hostNetwork: createdHostConfig.NetworkMode === "host",
+      privileged: createdHostConfig.Privileged === true,
     });
     try {
       await container.start();
@@ -436,6 +439,38 @@ export class DockerWorkspaceRuntime implements WorkspaceRuntime {
       "workspace bootstrap did not become ready",
     );
   }
+}
+
+function hostConfig(
+  names: ReturnType<typeof dockerNames>,
+  input: CreateWorkspace,
+): Docker.HostConfig {
+  const gatewayPorts = previewGatewayPorts(validateWorkspacePorts(input.ports));
+  const config: Docker.HostConfig = {
+    Init: true,
+    AutoRemove: false,
+    Privileged: true,
+    NetworkMode: names.network,
+    Memory: Math.max(512, input.resources?.memoryMb ?? 4_096) * 1024 * 1024,
+    NanoCpus: Math.max(0.5, input.resources?.cpu ?? 2) * 1_000_000_000,
+    PidsLimit: 4_096,
+    Mounts: [{ Type: "volume", Source: names.volume, Target: "/workspace", ReadOnly: false }],
+    PortBindings: Object.fromEntries(
+      gatewayPorts.map(({ gatewayPort }) => [
+        `${gatewayPort}/tcp`,
+        [{ HostIp: "127.0.0.1", HostPort: "" }],
+      ]),
+    ),
+  };
+  assertWorkspaceHostBoundary(config);
+  return config;
+}
+
+function mountSources(config: { Binds?: string[]; Mounts?: { Source?: string }[] }) {
+  return [
+    ...(config.Binds ?? []).map((bind) => bind.split(":")[0] ?? ""),
+    ...(config.Mounts ?? []).map((mount) => mount.Source ?? ""),
+  ];
 }
 
 function dockerNames(id: string) {

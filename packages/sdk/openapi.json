@@ -6645,12 +6645,29 @@
                         },
                         "retained": {
                           "type": "number"
+                        },
+                        "signals": {
+                          "type": "object",
+                          "properties": {
+                            "isolationRecorded": { "type": "number" },
+                            "bootstrapFailures": { "type": "number" },
+                            "suspendFailures": { "type": "number" },
+                            "queuedOverTenMinutes": { "type": "number" }
+                          },
+                          "required": [
+                            "isolationRecorded",
+                            "bootstrapFailures",
+                            "suspendFailures",
+                            "queuedOverTenMinutes"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "required": [
                         "total",
                         "states",
-                        "retained"
+                        "retained",
+                        "signals"
                       ],
                       "additionalProperties": false
                     },

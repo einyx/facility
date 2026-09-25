@@ -109,6 +109,12 @@ const ObservabilityResponse = z.object({
     total: z.number(),
     states: z.record(z.string(), z.number()),
     retained: z.number(),
+    signals: z.object({
+      isolationRecorded: z.number(),
+      bootstrapFailures: z.number(),
+      suspendFailures: z.number(),
+      queuedOverTenMinutes: z.number(),
+    }),
   }),
   github: z.object({
     openIssues: z.number(),

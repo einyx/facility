@@ -76,7 +76,7 @@ export const AgentManifestFrontmatterSchema = z
   .object({
     name: AgentNameSchema,
     description: z.string().min(1).max(240),
-    engine: z.enum(["claude_code", "codex"]),
+    engine: z.enum(["claude_code", "codex", "ollama"]),
     model: z.string().min(1).max(160),
     enabled: z.boolean().default(true),
     options: z

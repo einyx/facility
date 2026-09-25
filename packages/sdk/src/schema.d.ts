@@ -5135,6 +5135,12 @@ export interface operations {
                                 [key: string]: number;
                             };
                             retained: number;
+                            signals: {
+                                isolationRecorded: number;
+                                bootstrapFailures: number;
+                                suspendFailures: number;
+                                queuedOverTenMinutes: number;
+                            };
                         };
                         github: {
                             openIssues: number;

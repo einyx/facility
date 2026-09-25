@@ -791,7 +791,7 @@ export const turns = pgTable(
       .on(table.projectId, table.agentName, table.triggerKey, table.scheduledFor)
       .where(sql`${table.scheduledFor} is not null`),
     index("turns_org_story_created_idx").on(table.orgId, table.storyId, table.createdAt.desc()),
-    check("turns_engine_check", sql`${table.engine} in ('claude_code', 'codex')`),
+    check("turns_engine_check", sql`${table.engine} in ('claude_code', 'codex', 'ollama')`),
     check("turns_next_event_seq_check", sql`${table.nextEventSeq} > 0`),
     check(
       "turns_state_check",
@@ -963,7 +963,7 @@ export const engineSessions = pgTable(
       .on(table.workspaceId, table.agentName, table.engine, table.model)
       .where(sql`${table.status} = 'active'`),
     index("engine_sessions_org_story_idx").on(table.orgId, table.storyId, table.lastUsedAt.desc()),
-    check("engine_sessions_engine_check", sql`${table.engine} in ('claude_code', 'codex')`),
+    check("engine_sessions_engine_check", sql`${table.engine} in ('claude_code', 'codex', 'ollama')`),
     check("engine_sessions_status_check", sql`${table.status} in ('active', 'corrupt', 'closed')`),
     foreignKey({
       name: "engine_sessions_story_scope_fk",

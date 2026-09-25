@@ -15,7 +15,7 @@ import { ProjectBacklogService } from "./stories/backlog.js";
 import { StoryWorkspaceService } from "./stories/service.js";
 import { StoryTitleService, titleCredentials } from "./stories/titles.js";
 import { TurnDispatcher } from "./turns/dispatcher.js";
-import { AgentEngineRegistry, ClaudeCodeEngine, CodexEngine } from "./turns/engines.js";
+import { AgentEngineRegistry, ClaudeCodeEngine, CodexEngine, OllamaEngine } from "./turns/engines.js";
 import { TurnGitEvidenceService } from "./turns/git-evidence.js";
 import type { AppConfig } from "./types.js";
 import { DockerWorkspaceRuntime } from "./workspaces/docker.js";
@@ -94,6 +94,7 @@ export function createStoryDomain(input: {
   const engines = new AgentEngineRegistry([
     new ClaudeCodeEngine(runtime),
     new CodexEngine(runtime),
+    new OllamaEngine(runtime),
   ]);
   const evidence = new TurnGitEvidenceService(input.db, runtime);
   const titles = new StoryTitleService(input.db, {

@@ -22,6 +22,7 @@ import { ACTIVITY_NOISE_TYPES, presentTurnEvent } from "../turns/activity.js";
 import { stopInterruptedEngineProcess } from "../turns/engines.js";
 import { appendTurnEvent } from "../turns/events.js";
 import { appendWorkspaceEvent } from "../workspaces/events.js";
+import { isolationEventData } from "../workspaces/isolation.js";
 import { shouldSuspendFailedWorkspace } from "../workspaces/failed-turn-policy.js";
 import type {
   CreateWorkspace,
@@ -278,6 +279,13 @@ export class StoryWorkspaceService {
         operation: runtimeOperation,
         durationMs: Math.round(performance.now() - runtimeStartedAt),
       });
+      await appendWorkspaceEvent(
+        this.db,
+        aggregate.workspace.id,
+        input.orgId,
+        "workspace.isolation",
+        isolationEventData(this.runtime.provider, this.runtime.isolationFacts?.(aggregate.workspace.id)),
+      );
     } catch (error) {
       await this.markRuntimeFailure(aggregate.story.id, aggregate.workspace.id, input, error);
       throw new StoryServiceError(
