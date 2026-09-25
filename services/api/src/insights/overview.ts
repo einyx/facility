@@ -9,10 +9,12 @@ import {
   githubWebhookEvents,
   turns,
   turnUsage,
+  workspaceEvents,
   workspaces,
 } from "@facility/db";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 import type { CostBudgetService } from "./costs.js";
+import { summarizeWorkspaceSignals } from "../workspaces/isolation.js";
 
 // Insights only reads metric dimensions. Large webhook bodies, issue text, workspace
 // setup output and agent manifests must never be materialized for this overview.
@@ -56,6 +58,7 @@ export class InsightsService {
       manifestRows,
       budget,
       recentAudit,
+      signalRows,
     ] = await Promise.all([
       this.db
         .select({ state: turns.state, createdAt: turns.createdAt })
@@ -155,6 +158,23 @@ export class InsightsService {
         .where(and(eq(auditEvents.orgId, orgId), eq(auditEvents.projectId, projectId)))
         .orderBy(desc(auditEvents.createdAt))
         .limit(25),
+      this.db
+        .select({ type: workspaceEvents.type })
+        .from(workspaceEvents)
+        .innerJoin(
+          workspaces,
+          and(
+            eq(workspaceEvents.orgId, workspaces.orgId),
+            eq(workspaceEvents.workspaceId, workspaces.id),
+          ),
+        )
+        .where(
+          and(
+            eq(workspaces.orgId, orgId),
+            eq(workspaces.projectId, projectId),
+            gte(workspaceEvents.createdAt, from),
+          ),
+        ),
     ]);
     const turnCounts = countBy(turnRows, (row) => row.state);
     const workspaceCounts = countBy(workspaceRows, (row) => row.state);
@@ -166,8 +186,12 @@ export class InsightsService {
       (pull) => pull.state === "open" && pull.ciState === "failure",
     ).length;
     const errorWorkspaces = workspaceRows.filter((workspace) => workspace.state === "error").length;
+    const signals = summarizeWorkspaceSignals(signalRows.map((row) => row.type));
+    const queuedOverTenMinutes = turnRows.filter(
+      (turn) => turn.state === "queued" && now.getTime() - turn.createdAt.getTime() > 10 * 60 * 1_000,
+    ).length;
     const health =
-      failedWebhooks > 0 || errorWorkspaces > 0
+      failedWebhooks > 0 || errorWorkspaces > 0 || signals.bootstrapFailures > 0
         ? "degraded"
         : turnRows.some((turn) => turn.state === "failed") || failedChecks > 0
           ? "attention"
@@ -193,6 +217,7 @@ export class InsightsService {
         total: workspaceRows.length,
         states: workspaceCounts,
         retained: workspaceRows.filter((workspace) => workspace.state !== "destroyed").length,
+        signals: { ...signals, queuedOverTenMinutes },
       },
       github: {
         openIssues: issueRows.filter((issue) => issue.state === "open").length,

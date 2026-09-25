@@ -251,7 +251,7 @@ export const toolDefinitions: ToolDefinition[] = [
     name: "facility_get_observability",
     permission: "analytics:read",
     description:
-      "Read project health, turn outcomes, usage trends, budget state, workspace state, GitHub delivery health, and recent audit events. Needs analytics:read.",
+      "Read project health, turn outcomes, usage trends, budget state, workspace isolation signals, GitHub delivery health, and recent audit events. Needs analytics:read.",
     inputSchema: {
       projectId,
       days: z.number().int().min(1).max(365).default(30),

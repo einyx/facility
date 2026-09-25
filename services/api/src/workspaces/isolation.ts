@@ -36,6 +36,32 @@ export function assertNoHostDockerSocket(hostConfig: {
   assertWorkspaceHostBoundary(hostConfig);
 }
 
+export function isolationEventData(provider: WorkspaceIsolationEvidence["provider"]) {
+  const evidence = workspaceIsolationEvidence(provider);
+  return {
+    provider: evidence.provider,
+    hostDockerSocketMounted: evidence.hostDockerSocketMounted,
+    hostNetwork: evidence.hostNetwork,
+    privileged: evidence.privileged,
+    agentUser: evidence.agentUser,
+    gaps: evidence.gaps,
+  };
+}
+
+const SIGNAL_TYPES = {
+  isolationRecorded: "workspace.isolation",
+  bootstrapFailures: "workspace.provider_error",
+  suspendFailures: "workspace.suspend_failed",
+} as const;
+
+export function summarizeWorkspaceSignals(types: string[]) {
+  return {
+    isolationRecorded: types.filter((type) => type === SIGNAL_TYPES.isolationRecorded).length,
+    bootstrapFailures: types.filter((type) => type === SIGNAL_TYPES.bootstrapFailures).length,
+    suspendFailures: types.filter((type) => type === SIGNAL_TYPES.suspendFailures).length,
+  };
+}
+
 export function workspaceIsolationEvidence(
   provider: WorkspaceIsolationEvidence["provider"],
 ): WorkspaceIsolationEvidence {

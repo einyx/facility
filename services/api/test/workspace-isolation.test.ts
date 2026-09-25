@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   assertNoHostDockerSocket,
   assertWorkspaceHostBoundary,
+  isolationEventData,
+  summarizeWorkspaceSignals,
   workspaceIsolationEvidence,
 } from "../src/workspaces/isolation.js";
 
@@ -30,6 +32,32 @@ describe("workspace isolation evidence", () => {
         Mounts: [{ Type: "volume", Source: "facility-ws-volume-abc", Target: "/workspace" }],
       }),
     ).not.toThrow();
+  });
+
+  it("records isolation without secret fields", () => {
+    expect(isolationEventData("docker")).toEqual({
+      provider: "docker",
+      hostDockerSocketMounted: false,
+      hostNetwork: false,
+      privileged: true,
+      agentUser: "node",
+      gaps: [
+        "the container is privileged so nested dockerd can start",
+        "every agent still has the project GitHub maintainer capability",
+        "outbound network is not restricted",
+      ],
+    });
+  });
+
+  it("counts persisted workspace signals", () => {
+    expect(
+      summarizeWorkspaceSignals([
+        "workspace.isolation",
+        "workspace.provider_error",
+        "workspace.suspend_failed",
+        "workspace.ready",
+      ]),
+    ).toEqual({ isolationRecorded: 1, bootstrapFailures: 1, suspendFailures: 1 });
   });
 
   it("records the docker gaps a second team has to accept", () => {
