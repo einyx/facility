@@ -217,14 +217,13 @@ export class CodexEngine extends CliAgentEngine {
   }
 }
 
-const DEFAULT_OLLAMA_HOST = "http://192.168.190.237:11434";
-
 const OLLAMA_RUNNER = `import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import crypto from "node:crypto";
 const proxy = process.env.FACILITY_MODEL_PROXY;
-const host = (process.env.OLLAMA_HOST || ${JSON.stringify(DEFAULT_OLLAMA_HOST)}).replace(/\\/$/, "");
+const host = (process.env.OLLAMA_HOST || "").replace(/\\/$/, "");
+if (!proxy && !host) { console.error("no model proxy or OLLAMA_HOST configured"); process.exit(1); }
 const url = proxy || host + "/api/chat";
 const model = process.env.OLLAMA_MODEL;
 const prompt = process.env.FACILITY_PROMPT || "";

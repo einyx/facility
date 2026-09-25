@@ -25,6 +25,13 @@ describe("insights metric projections", () => {
                   ? [{ state: "succeeded", createdAt: now }]
                   : [];
             return {
+              innerJoin() {
+                return {
+                  where() {
+                    return { groupBy: async () => [] };
+                  },
+                };
+              },
               where() {
                 return Object.assign(Promise.resolve(rows), {
                   orderBy() {

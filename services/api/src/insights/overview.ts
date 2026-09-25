@@ -14,7 +14,7 @@ import {
 } from "@facility/db";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 import type { CostBudgetService } from "./costs.js";
-import { summarizeWorkspaceSignals } from "../workspaces/isolation.js";
+import { summarizeWorkspaceSignalCounts } from "../workspaces/isolation.js";
 
 // Insights only reads metric dimensions. Large webhook bodies, issue text, workspace
 // setup output and agent manifests must never be materialized for this overview.
@@ -159,7 +159,7 @@ export class InsightsService {
         .orderBy(desc(auditEvents.createdAt))
         .limit(25),
       this.db
-        .select({ type: workspaceEvents.type })
+        .select({ type: workspaceEvents.type, total: sql<number>`count(*)::int` })
         .from(workspaceEvents)
         .innerJoin(
           workspaces,
@@ -174,7 +174,8 @@ export class InsightsService {
             eq(workspaces.projectId, projectId),
             gte(workspaceEvents.createdAt, from),
           ),
-        ),
+        )
+        .groupBy(workspaceEvents.type),
     ]);
     const turnCounts = countBy(turnRows, (row) => row.state);
     const workspaceCounts = countBy(workspaceRows, (row) => row.state);
@@ -186,7 +187,7 @@ export class InsightsService {
       (pull) => pull.state === "open" && pull.ciState === "failure",
     ).length;
     const errorWorkspaces = workspaceRows.filter((workspace) => workspace.state === "error").length;
-    const signals = summarizeWorkspaceSignals(signalRows.map((row) => row.type));
+    const signals = summarizeWorkspaceSignalCounts(signalRows);
     const queuedOverTenMinutes = turnRows.filter(
       (turn) => turn.state === "queued" && now.getTime() - turn.createdAt.getTime() > 10 * 60 * 1_000,
     ).length;

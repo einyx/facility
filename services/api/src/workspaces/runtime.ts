@@ -101,6 +101,10 @@ export interface WorkspaceRuntime {
     ports: WorkspacePort[],
   ): Promise<Record<string, string>>;
   inspect(workspace: WorkspaceLocator): Promise<WorkspaceInspection>;
+  /** Observed isolation facts for a workspace this runtime created; undefined when unknown. */
+  isolationFacts?(
+    workspaceId: string,
+  ): { hostDockerSocketMounted: boolean; hostNetwork: boolean; privileged: boolean } | undefined;
   diagnostics?(
     workspace: WorkspaceLocator,
     cwd: string,

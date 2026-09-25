@@ -1,8 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import {
   allowlistedChatBody,
-  DEFAULT_OLLAMA_UPSTREAM,
   forwardModelChat,
+  ollamaUpstream,
   redactModelProxyLog,
   verifyModelProxyToken,
 } from "../../model-proxy/proxy.js";
@@ -30,10 +30,15 @@ export async function registerModelProxyRoutes(app: FastifyInstance, config: App
         });
       }
       const started = Date.now();
-      const forwarded = await forwardModelChat({
-        upstream: process.env.OLLAMA_UPSTREAM ?? DEFAULT_OLLAMA_UPSTREAM,
-        body,
-      });
+      let upstream: string;
+      try {
+        upstream = ollamaUpstream();
+      } catch {
+        return reply.status(503).send({
+          error: { code: "model_proxy_unconfigured", message: "OLLAMA_UPSTREAM is not configured" },
+        });
+      }
+      const forwarded = await forwardModelChat({ upstream, body });
       request.log.info(
         redactModelProxyLog({
           workspaceId,

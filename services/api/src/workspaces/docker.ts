@@ -25,7 +25,16 @@ const KIND = "workspace-v2";
 export class DockerWorkspaceRuntime implements WorkspaceRuntime {
   readonly provider = "docker" as const;
 
+  private readonly isolationFactsByWorkspace = new Map<
+    string,
+    { hostDockerSocketMounted: boolean; hostNetwork: boolean; privileged: boolean }
+  >();
+
   constructor(private readonly docker = new Docker()) {}
+
+  isolationFacts(workspaceId: string) {
+    return this.isolationFactsByWorkspace.get(workspaceId);
+  }
 
   async create(input: CreateWorkspace): Promise<WorkspaceHandle> {
     assertWorkspaceId(input.id);
@@ -46,6 +55,7 @@ export class DockerWorkspaceRuntime implements WorkspaceRuntime {
       Name: names.volume,
       Labels: { [WORKSPACE_LABEL]: input.id, [KIND_LABEL]: KIND },
     });
+    const createdHostConfig = hostConfig(names, input);
     const container = await this.docker.createContainer({
       name: names.container,
       Image: input.image,
@@ -61,7 +71,14 @@ export class DockerWorkspaceRuntime implements WorkspaceRuntime {
       ExposedPorts: Object.fromEntries(
         gatewayPorts.map(({ gatewayPort }) => [`${gatewayPort}/tcp`, {}]),
       ),
-      HostConfig: hostConfig(names, input),
+      HostConfig: createdHostConfig,
+    });
+    this.isolationFactsByWorkspace.set(input.id, {
+      hostDockerSocketMounted: mountSources(createdHostConfig).some(
+        (source) => source === "/var/run/docker.sock" || source.endsWith("/docker.sock"),
+      ),
+      hostNetwork: createdHostConfig.NetworkMode === "host",
+      privileged: createdHostConfig.Privileged === true,
     });
     try {
       await container.start();
@@ -427,9 +444,9 @@ export class DockerWorkspaceRuntime implements WorkspaceRuntime {
 function hostConfig(
   names: ReturnType<typeof dockerNames>,
   input: CreateWorkspace,
-) {
+): Docker.HostConfig {
   const gatewayPorts = previewGatewayPorts(validateWorkspacePorts(input.ports));
-  const config = {
+  const config: Docker.HostConfig = {
     Init: true,
     AutoRemove: false,
     Privileged: true,
@@ -447,6 +464,13 @@ function hostConfig(
   };
   assertWorkspaceHostBoundary(config);
   return config;
+}
+
+function mountSources(config: { Binds?: string[]; Mounts?: { Source?: string }[] }) {
+  return [
+    ...(config.Binds ?? []).map((bind) => bind.split(":")[0] ?? ""),
+    ...(config.Mounts ?? []).map((mount) => mount.Source ?? ""),
+  ];
 }
 
 function dockerNames(id: string) {

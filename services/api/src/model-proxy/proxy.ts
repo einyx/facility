@@ -1,9 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 
-const MAX_BODY_BYTES = 256 * 1024;
-const TOKEN_TTL_MS = 15 * 60 * 1000;
-export const DEFAULT_OLLAMA_UPSTREAM = "http://192.168.190.237:11434";
+const TOKEN_TTL_MS = 5 * 60 * 1000;
 
 export type ModelProxyToken = { workspaceId: string; exp: number };
 
@@ -68,81 +65,10 @@ export async function forwardModelChat(input: {
   return { status: response.status, text };
 }
 
-export function startModelProxy(input: {
-  port: number;
-  secret: string;
-  upstream?: string;
-  onLog?: (line: ModelProxyLog) => void;
-}) {
-  const upstream = input.upstream ?? process.env.OLLAMA_UPSTREAM ?? DEFAULT_OLLAMA_UPSTREAM;
-  const server = createServer(async (request, response) => {
-    try {
-      await handle(request, response, { ...input, upstream });
-    } catch (error) {
-      response.writeHead(500).end(error instanceof Error ? error.message : "model proxy failed");
-    }
-  });
-  return new Promise<ReturnType<typeof createServer>>((resolve) => {
-    server.listen(input.port, "0.0.0.0", () => resolve(server));
-  });
-}
-
-async function handle(
-  request: IncomingMessage,
-  response: ServerResponse,
-  input: { secret: string; upstream: string; onLog?: (line: ModelProxyLog) => void },
-) {
-  if (request.method !== "POST" || request.url !== "/v1/model-proxy/chat") {
-    response.writeHead(404).end("not found");
-    return;
-  }
-  const started = Date.now();
-  const header = request.headers.authorization ?? "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : "";
-  let workspaceId = "unknown";
-  try {
-    workspaceId = verifyModelProxyToken(token, input.secret).workspaceId;
-  } catch {
-    response.writeHead(401).end("unauthorized");
-    return;
-  }
-  const raw = await readBody(request);
-  let body: ReturnType<typeof allowlistedChatBody>;
-  try {
-    body = allowlistedChatBody(JSON.parse(raw));
-  } catch (error) {
-    response.writeHead(400).end(error instanceof Error ? error.message : "invalid body");
-    return;
-  }
-  const forwarded = await forwardModelChat({ upstream: input.upstream, body });
-  input.onLog?.(
-    redactModelProxyLog({
-      workspaceId,
-      model: body.model,
-      status: forwarded.status,
-      bytes: Buffer.byteLength(raw),
-      durationMs: Date.now() - started,
-    }),
-  );
-  response.writeHead(forwarded.status, { "content-type": "application/json" }).end(forwarded.text);
-}
-
-function readBody(request: IncomingMessage) {
-  return new Promise<string>((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    let size = 0;
-    request.on("data", (chunk: Buffer) => {
-      size += chunk.length;
-      if (size > MAX_BODY_BYTES) {
-        reject(new Error("model proxy body is too large"));
-        request.destroy();
-        return;
-      }
-      chunks.push(chunk);
-    });
-    request.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
-    request.on("error", reject);
-  });
+export function ollamaUpstream(): string {
+  const upstream = process.env.OLLAMA_UPSTREAM;
+  if (!upstream) throw new Error("OLLAMA_UPSTREAM is required for the model proxy");
+  return upstream.replace(/\/$/, "");
 }
 
 function sign(body: string, secret: string) {

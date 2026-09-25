@@ -36,8 +36,15 @@ export function assertNoHostDockerSocket(hostConfig: {
   assertWorkspaceHostBoundary(hostConfig);
 }
 
-export function isolationEventData(provider: WorkspaceIsolationEvidence["provider"]) {
-  const evidence = workspaceIsolationEvidence(provider);
+export function isolationEventData(
+  provider: WorkspaceIsolationEvidence["provider"],
+  actual?: {
+    hostDockerSocketMounted: boolean;
+    hostNetwork: boolean;
+    privileged: boolean;
+  },
+) {
+  const evidence = workspaceIsolationEvidence(provider, actual);
   return {
     provider: evidence.provider,
     hostDockerSocketMounted: evidence.hostDockerSocketMounted,
@@ -55,31 +62,54 @@ const SIGNAL_TYPES = {
 } as const;
 
 export function summarizeWorkspaceSignals(types: string[]) {
+  return summarizeWorkspaceSignalCounts(
+    Object.entries(countByType(types)).map(([type, total]) => ({ type, total })),
+  );
+}
+
+export function summarizeWorkspaceSignalCounts(rows: { type: string; total: number }[]) {
+  const counts = new Map(rows.map((row) => [row.type, row.total]));
   return {
-    isolationRecorded: types.filter((type) => type === SIGNAL_TYPES.isolationRecorded).length,
-    bootstrapFailures: types.filter((type) => type === SIGNAL_TYPES.bootstrapFailures).length,
-    suspendFailures: types.filter((type) => type === SIGNAL_TYPES.suspendFailures).length,
+    isolationRecorded: counts.get(SIGNAL_TYPES.isolationRecorded) ?? 0,
+    bootstrapFailures: counts.get(SIGNAL_TYPES.bootstrapFailures) ?? 0,
+    suspendFailures: counts.get(SIGNAL_TYPES.suspendFailures) ?? 0,
   };
+}
+
+function countByType(types: string[]) {
+  return types.reduce<Record<string, number>>((acc, type) => {
+    acc[type] = (acc[type] ?? 0) + 1;
+    return acc;
+  }, {});
 }
 
 export function workspaceIsolationEvidence(
   provider: WorkspaceIsolationEvidence["provider"],
+  actual?: {
+    hostDockerSocketMounted: boolean;
+    hostNetwork: boolean;
+    privileged: boolean;
+  },
 ): WorkspaceIsolationEvidence {
   if (provider === "docker") {
-    return {
-      provider,
+    const facts = actual ?? {
       hostDockerSocketMounted: false,
       hostNetwork: false,
+      privileged: true,
+    };
+    const gaps = [
+      ...(facts.privileged ? ["the container is privileged so nested dockerd can start"] : []),
+      "every agent still has the project GitHub maintainer capability",
+      "outbound network is not restricted",
+    ];
+    return {
+      provider,
+      ...facts,
       agentUser: "node",
       bootstrapUser: "root",
-      privileged: true,
       network: "workspace",
       trust: "maintainer",
-      gaps: [
-        "the container is privileged so nested dockerd can start",
-        "every agent still has the project GitHub maintainer capability",
-        "outbound network is not restricted",
-      ],
+      gaps,
     };
   }
   if (provider === "vercel") {

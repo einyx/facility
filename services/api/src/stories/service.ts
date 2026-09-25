@@ -284,7 +284,7 @@ export class StoryWorkspaceService {
         aggregate.workspace.id,
         input.orgId,
         "workspace.isolation",
-        isolationEventData(this.runtime.provider),
+        isolationEventData(this.runtime.provider, this.runtime.isolationFacts?.(aggregate.workspace.id)),
       );
     } catch (error) {
       await this.markRuntimeFailure(aggregate.story.id, aggregate.workspace.id, input, error);
@@ -1676,13 +1676,6 @@ export class StoryWorkspaceService {
         operation: "wake",
         durationMs: Math.round(performance.now() - startedAt),
       });
-      await appendWorkspaceEvent(
-        db,
-        workspace.id,
-        orgId,
-        "workspace.isolation",
-        isolationEventData(this.runtime.provider),
-      );
     }
   }
 

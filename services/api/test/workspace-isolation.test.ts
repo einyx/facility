@@ -3,6 +3,7 @@ import {
   assertNoHostDockerSocket,
   assertWorkspaceHostBoundary,
   isolationEventData,
+  summarizeWorkspaceSignalCounts,
   summarizeWorkspaceSignals,
   workspaceIsolationEvidence,
 } from "../src/workspaces/isolation.js";
@@ -69,5 +70,31 @@ describe("workspace isolation evidence", () => {
       network: "workspace",
       trust: "maintainer",
     });
+  });
+
+  it("derives docker evidence from the actual container facts, not static claims", () => {
+    expect(
+      workspaceIsolationEvidence("docker", {
+        hostDockerSocketMounted: false,
+        hostNetwork: false,
+        privileged: false,
+      }),
+    ).toMatchObject({ privileged: false });
+    expect(
+      workspaceIsolationEvidence("docker", {
+        hostDockerSocketMounted: false,
+        hostNetwork: false,
+        privileged: false,
+      }).gaps,
+    ).not.toContain("the container is privileged so nested dockerd can start");
+  });
+
+  it("counts persisted workspace signals from grouped rows", () => {
+    expect(
+      summarizeWorkspaceSignalCounts([
+        { type: "workspace.isolation", total: 3 },
+        { type: "workspace.provider_error", total: 1 },
+      ]),
+    ).toEqual({ isolationRecorded: 3, bootstrapFailures: 1, suspendFailures: 0 });
   });
 });
