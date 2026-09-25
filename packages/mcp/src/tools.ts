@@ -185,7 +185,7 @@ export const toolDefinitions: ToolDefinition[] = [
     name: "facility_get_environment",
     permission: "projects:read",
     description:
-      "Inspect the story workspace, service endpoints, readiness, and recent environment events. Needs projects:read.",
+      "Inspect the story workspace, isolation evidence, service endpoints, readiness, and recent environment events. Needs projects:read.",
     inputSchema: {
       projectId,
       storyId,

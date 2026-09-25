@@ -14,6 +14,7 @@ import { IntegrationStateBody, updateIntegrationState } from "../../stories/inte
 import { readStoryLifecycle } from "../../stories/lifecycle.js";
 import { provisionalTitle, resolveDefaultAgent } from "../../stories/phase.js";
 import type { AppConfig } from "../../types.js";
+import { workspaceIsolationEvidence } from "../../workspaces/isolation.js";
 import { projectWorkspaceInput } from "../../workspaces/project-environment.js";
 import {
   parseWorkspaceVariables,
@@ -675,6 +676,11 @@ export async function registerStoryWorkspaceRoutes(app: FastifyInstance, config:
       return {
         workspace: presentWorkspace(workspace),
         inspection,
+        isolation: workspaceIsolationEvidence(
+          workspace.provider === "vercel" || workspace.provider === "fake"
+            ? workspace.provider
+            : "docker",
+        ),
         metrics: workspaceMetrics(events, inspection),
         events,
         next_cursor: events.at(-1)?.seq ?? query.after ?? 0,

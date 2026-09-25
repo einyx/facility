@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { PassThrough, Readable } from "node:stream";
 import Docker from "dockerode";
+import { assertWorkspaceHostBoundary } from "./isolation.js";
 import {
   assertWorkspaceId,
   type CreateWorkspace,
@@ -60,22 +61,7 @@ export class DockerWorkspaceRuntime implements WorkspaceRuntime {
       ExposedPorts: Object.fromEntries(
         gatewayPorts.map(({ gatewayPort }) => [`${gatewayPort}/tcp`, {}]),
       ),
-      HostConfig: {
-        Init: true,
-        AutoRemove: false,
-        Privileged: true,
-        NetworkMode: names.network,
-        Memory: Math.max(512, input.resources?.memoryMb ?? 4_096) * 1024 * 1024,
-        NanoCpus: Math.max(0.5, input.resources?.cpu ?? 2) * 1_000_000_000,
-        PidsLimit: 4_096,
-        Mounts: [{ Type: "volume", Source: names.volume, Target: "/workspace", ReadOnly: false }],
-        PortBindings: Object.fromEntries(
-          gatewayPorts.map(({ gatewayPort }) => [
-            `${gatewayPort}/tcp`,
-            [{ HostIp: "127.0.0.1", HostPort: "" }],
-          ]),
-        ),
-      },
+      HostConfig: hostConfig(names, input),
     });
     try {
       await container.start();
@@ -436,6 +422,31 @@ export class DockerWorkspaceRuntime implements WorkspaceRuntime {
       "workspace bootstrap did not become ready",
     );
   }
+}
+
+function hostConfig(
+  names: ReturnType<typeof dockerNames>,
+  input: CreateWorkspace,
+) {
+  const gatewayPorts = previewGatewayPorts(validateWorkspacePorts(input.ports));
+  const config = {
+    Init: true,
+    AutoRemove: false,
+    Privileged: true,
+    NetworkMode: names.network,
+    Memory: Math.max(512, input.resources?.memoryMb ?? 4_096) * 1024 * 1024,
+    NanoCpus: Math.max(0.5, input.resources?.cpu ?? 2) * 1_000_000_000,
+    PidsLimit: 4_096,
+    Mounts: [{ Type: "volume", Source: names.volume, Target: "/workspace", ReadOnly: false }],
+    PortBindings: Object.fromEntries(
+      gatewayPorts.map(({ gatewayPort }) => [
+        `${gatewayPort}/tcp`,
+        [{ HostIp: "127.0.0.1", HostPort: "" }],
+      ]),
+    ),
+  };
+  assertWorkspaceHostBoundary(config);
+  return config;
 }
 
 function dockerNames(id: string) {
