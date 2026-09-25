@@ -48,7 +48,7 @@ hashed with SHA-256. A turn stores that hash, the source commit, engine, model, 
 | --- | --- | --- |
 | `name` | Yes | Lowercase kebab case, 1–64 characters, and identical to the filename without `.md`. |
 | `description` | Yes | 1–240 characters for human and client discovery. |
-| `engine` | Yes | `claude_code` or `codex`. |
+| `engine` | Yes | `claude_code`, `codex`, or `ollama`. |
 | `model` | Yes | Explicit engine model name, 1–160 characters. |
 | `options` | No | Strict engine options object; defaults to `{}`. |
 | `enabled` | No | Boolean; defaults to `true`. |

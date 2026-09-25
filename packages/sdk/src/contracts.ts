@@ -148,7 +148,7 @@ export type KickstartAnswers = NonNullable<
 export type StoryAgent = {
   name: string;
   description: string;
-  engine: "claude_code" | "codex";
+  engine: "claude_code" | "codex" | "ollama";
   model: string;
   enabled: boolean;
   options: {

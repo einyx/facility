@@ -5,7 +5,7 @@ title: Agents as code
 # Agents as code
 
 Facility reads every agent from `.agents/*.md` in the primary repository. Frontmatter is strict:
-unknown fields fail validation, names match filenames, engines are `claude_code` or `codex`, models
+unknown fields fail validation, names match filenames, engines are `claude_code`, `codex`, or `ollama`, models
 are explicit, and at least one trigger is required.
 
 The Markdown body is the agent prompt. The frontmatter is execution configuration. Keeping both in

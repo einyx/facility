@@ -42,7 +42,7 @@ const ReasoningEffort = z.enum([
 const UpdateAgentBody = z.object({
   expected_commit_sha: z.string().regex(/^[a-f0-9]{40}$/),
   description: z.string().min(1).max(240),
-  engine: z.enum(["claude_code", "codex"]),
+  engine: z.enum(["claude_code", "codex", "ollama"]),
   model: z.string().min(1).max(160),
   reasoning_effort: ReasoningEffort.nullable().optional(),
   enabled: z.boolean(),

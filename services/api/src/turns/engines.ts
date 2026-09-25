@@ -19,7 +19,7 @@ export type AgentTurnRequest = {
 };
 
 export type AgentTurnEvent = {
-  engine: "claude_code" | "codex";
+  engine: "claude_code" | "codex" | "ollama";
   type: string;
   data: Record<string, unknown>;
 };
@@ -48,7 +48,7 @@ export type AgentTurnUsage = {
 };
 
 export interface AgentEngine {
-  readonly name: "claude_code" | "codex";
+  readonly name: "claude_code" | "codex" | "ollama";
   run(request: AgentTurnRequest): Promise<AgentTurnResult>;
 }
 
@@ -64,7 +64,7 @@ export class AgentEngineError extends Error {
 }
 
 abstract class CliAgentEngine implements AgentEngine {
-  abstract readonly name: "claude_code" | "codex";
+  abstract readonly name: "claude_code" | "codex" | "ollama";
   abstract run(request: AgentTurnRequest): Promise<AgentTurnResult>;
 
   constructor(protected readonly runtime: WorkspaceRuntime) {}
@@ -213,6 +213,65 @@ export class CodexEngine extends CliAgentEngine {
       environment.CODEX_API_KEY = environment.OPENAI_API_KEY;
     }
     return this.execute({ ...request, environment }, "codex", args, new CodexEventParser());
+  }
+}
+
+const DEFAULT_OLLAMA_HOST = "http://192.168.190.237:11434";
+
+const OLLAMA_RUNNER = `import fs from "node:fs";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
+import crypto from "node:crypto";
+const host = (process.env.OLLAMA_HOST || ${JSON.stringify(DEFAULT_OLLAMA_HOST)}).replace(/\\/$/, "");
+const model = process.env.OLLAMA_MODEL;
+const prompt = process.env.FACILITY_PROMPT || "";
+const session = process.env.FACILITY_SESSION || crypto.randomUUID();
+const dir = "/workspace/.facility/ollama";
+fs.mkdirSync(dir, { recursive: true });
+const file = path.join(dir, session + ".json");
+const messages = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : [];
+messages.push({ role: "user", content: prompt });
+const tools = [{ type: "function", function: { name: "shell", description: "Run a shell command in the workspace", parameters: { type: "object", properties: { command: { type: "string" } }, required: ["command"] } } }];
+let output = "";
+for (let turn = 0; turn < 8; turn += 1) {
+  const response = await fetch(host + "/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ model, messages, tools, stream: false, think: false }) });
+  if (!response.ok) { console.error(await response.text()); process.exit(1); }
+  const body = await response.json();
+  const message = body.message || {};
+  messages.push(message);
+  const calls = Array.isArray(message.tool_calls) ? message.tool_calls : [];
+  if (calls.length === 0) { output = typeof message.content === "string" ? message.content : ""; break; }
+  for (const call of calls) {
+    const command = call.function && call.function.arguments ? call.function.arguments.command : "";
+    let result = "";
+    try { result = execFileSync("sh", ["-lc", String(command)], { encoding: "utf8", timeout: 120000, maxBuffer: 200000 }); }
+    catch (error) { result = String(error.stdout || "") + String(error.stderr || error.message); }
+    messages.push({ role: "tool", content: result.slice(0, 8000) });
+  }
+}
+fs.writeFileSync(file, JSON.stringify(messages));
+process.stdout.write(JSON.stringify({ session_id: session, type: "result", output, model }) + "\\n");
+`;
+
+export class OllamaEngine extends CliAgentEngine {
+  readonly name = "ollama" as const;
+
+  async run(request: AgentTurnRequest): Promise<AgentTurnResult> {
+    const host =
+      request.environment?.OLLAMA_HOST || process.env.OLLAMA_HOST || DEFAULT_OLLAMA_HOST;
+    const environment = {
+      ...(request.environment ?? {}),
+      OLLAMA_HOST: host,
+      OLLAMA_MODEL: request.manifest.model,
+      FACILITY_PROMPT: request.prompt,
+      ...(request.nativeSessionId ? { FACILITY_SESSION: request.nativeSessionId } : {}),
+    };
+    return this.execute(
+      { ...request, environment },
+      "node",
+      ["--input-type=module", "-e", OLLAMA_RUNNER],
+      new OllamaEventParser(),
+    );
   }
 }
 
@@ -401,6 +460,29 @@ export class CodexEventParser extends EngineEventParser {
       progress,
       events: this.events,
       usage: this.usage,
+    };
+  }
+}
+
+export class OllamaEventParser extends EngineEventParser {
+  private sessionId?: string;
+  private output = "";
+  private model?: string;
+
+  protected accept(value: Record<string, unknown>) {
+    this.events.push({ engine: "ollama", type: stringValue(value.type) ?? "result", data: value });
+    this.sessionId ??= stringValue(value.session_id);
+    this.model ??= stringValue(value.model);
+    this.output = stringValue(value.output) ?? this.output;
+  }
+
+  result(): ParsedEngineEvents {
+    return {
+      sessionId: this.sessionId,
+      output: this.output,
+      progress: [],
+      model: this.model,
+      events: this.events,
     };
   }
 }
