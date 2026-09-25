@@ -1,4 +1,5 @@
 import type { AgentManifest } from "@facility/agents";
+import { mintModelProxyToken } from "../model-proxy/proxy.js";
 import type {
   WorkspaceCommandResult,
   WorkspaceLocator,
@@ -222,7 +223,9 @@ const OLLAMA_RUNNER = `import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import crypto from "node:crypto";
+const proxy = process.env.FACILITY_MODEL_PROXY;
 const host = (process.env.OLLAMA_HOST || ${JSON.stringify(DEFAULT_OLLAMA_HOST)}).replace(/\\/$/, "");
+const url = proxy || host + "/api/chat";
 const model = process.env.OLLAMA_MODEL;
 const prompt = process.env.FACILITY_PROMPT || "";
 const session = process.env.FACILITY_SESSION || crypto.randomUUID();
@@ -234,7 +237,9 @@ messages.push({ role: "user", content: prompt });
 const tools = [{ type: "function", function: { name: "shell", description: "Run a shell command in the workspace", parameters: { type: "object", properties: { command: { type: "string" } }, required: ["command"] } } }];
 let output = "";
 for (let turn = 0; turn < 8; turn += 1) {
-  const response = await fetch(host + "/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ model, messages, tools, stream: false, think: false }) });
+  const headers = { "content-type": "application/json" };
+  if (process.env.FACILITY_MODEL_TOKEN) headers.authorization = "Bearer " + process.env.FACILITY_MODEL_TOKEN;
+  const response = await fetch(url, { method: "POST", headers, body: JSON.stringify({ model, messages, tools, stream: false, think: false }) });
   if (!response.ok) { console.error(await response.text()); process.exit(1); }
   const body = await response.json();
   const message = body.message || {};
@@ -257,11 +262,15 @@ export class OllamaEngine extends CliAgentEngine {
   readonly name = "ollama" as const;
 
   async run(request: AgentTurnRequest): Promise<AgentTurnResult> {
-    const host =
-      request.environment?.OLLAMA_HOST || process.env.OLLAMA_HOST || DEFAULT_OLLAMA_HOST;
+    const secret = process.env.SECRET_MASTER_KEY;
+    if (!secret) {
+      throw new AgentEngineError("model_proxy_unconfigured", "SECRET_MASTER_KEY is required for the model proxy");
+    }
     const environment = {
       ...(request.environment ?? {}),
-      OLLAMA_HOST: host,
+      FACILITY_MODEL_PROXY:
+        process.env.FACILITY_MODEL_PROXY ?? "http://host.docker.internal:4400/v1/model-proxy/chat",
+      FACILITY_MODEL_TOKEN: mintModelProxyToken(request.workspace.id, secret),
       OLLAMA_MODEL: request.manifest.model,
       FACILITY_PROMPT: request.prompt,
       ...(request.nativeSessionId ? { FACILITY_SESSION: request.nativeSessionId } : {}),

@@ -8,6 +8,7 @@ import { registerProjectOverviewRoutes } from "./v1/project-overview.js";
 import { registerProjectRoutes } from "./v1/projects.js";
 import { assertProjectInOrg } from "./v1/shared.js";
 import { registerStoryWorkspaceRoutes } from "./v1/story-workspaces.js";
+import { registerModelProxyRoutes } from "./v1/model-proxy.js";
 import { registerWorkspacePreviewRoutes } from "./v1/workspace-previews.js";
 
 export async function registerV1Routes(app: FastifyInstance, config: AppConfig) {
@@ -28,4 +29,5 @@ export async function registerV1Routes(app: FastifyInstance, config: AppConfig) 
   await registerProjectOverviewRoutes(app, context);
   await registerStoryWorkspaceRoutes(app, config);
   await registerWorkspacePreviewRoutes(app, config);
+  await registerModelProxyRoutes(app, config);
 }
