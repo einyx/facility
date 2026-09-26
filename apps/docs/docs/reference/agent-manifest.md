@@ -69,17 +69,20 @@ permissions:
   github:
     contents: write
     pull_requests: write
-    issues: read
+    issues: write
+    actions: read
     metadata: read
 ```
 
 Agents without a block run with the least-privilege default: `contents: write`,
-`pull_requests: write`, `issues: read`, and `metadata: read` — enough to
-commit, push, and open the story pull request. A profile can only narrow the
-GitHub App's configured permission set; requesting a permission the App lacks
-fails token minting with a GitHub error. Authenticated previews and
-control-plane delivery operations are not agent turns and keep the
-installation's full capability.
+`pull_requests: write`, `issues: write`, `actions: read`, and
+`metadata: read` — enough to commit, push, open the story pull request,
+comment on it and label issues (the issues API), and read check results.
+A profile can only narrow the GitHub App's configured permission set;
+requesting a permission the App lacks fails token minting with a GitHub error.
+When GitHub denies an action mid-turn, the required permission is missing from
+the manifest. Authenticated previews and control-plane delivery operations are
+not agent turns and keep the installation's full capability.
 
 ## Options
 

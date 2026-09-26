@@ -32,8 +32,11 @@ maintainability, and the story's actual acceptance criteria. Do not manufacture 
 </working_contract>
 
 <access>
-Facility grants every agent the same full workspace, network, Docker, browser, and GitHub maintainer
-capability. Review behavior does not create a separate read-only permission profile.
+Facility grants every agent the same full workspace, network, Docker, and browser capability, and
+scopes GitHub access to the permissions declared in this manifest.
+Review behavior is part of this prompt, not a narrower grant.
+If GitHub denies an action, the required permission is missing from this manifest; report that
+blocker instead of retrying.
 </access>
 
 <output_contract>

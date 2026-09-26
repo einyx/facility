@@ -78,14 +78,19 @@ export type AgentGithubProfile = {
   contents?: "read" | "write" | "none";
   pull_requests?: "read" | "write" | "none";
   issues?: "read" | "write" | "none";
+  actions?: "read" | "write" | "none";
   metadata?: "read";
 };
 
-/** Least-privilege baseline: commit, push, open pull requests, read issues and metadata. */
+/**
+ * Least-privilege baseline: commit, push, and open the story pull request;
+ * comment on it and label issues (the issues API); read checks and metadata.
+ */
 export const DEFAULT_AGENT_GITHUB_PERMISSIONS: Required<AgentGithubProfile> = {
   contents: "write",
   pull_requests: "write",
-  issues: "read",
+  issues: "write",
+  actions: "read",
   metadata: "read",
 };
 
@@ -96,6 +101,7 @@ export const AgentGithubPermissionsSchema = z
         contents: GithubPermissionLevel.optional(),
         pull_requests: GithubPermissionLevel.optional(),
         issues: GithubPermissionLevel.optional(),
+        actions: GithubPermissionLevel.optional(),
         metadata: z.literal("read").optional(),
       })
       .strict()
@@ -123,7 +129,7 @@ export function resolveAgentGithubPermissions(
  */
 export function githubTokenPermissionsBody(profile: AgentGithubProfile): Record<string, string> {
   const body: Record<string, string> = {};
-  for (const key of ["contents", "pull_requests", "issues", "metadata"] as const) {
+  for (const key of ["contents", "pull_requests", "issues", "actions", "metadata"] as const) {
     const level = profile[key];
     if (level && level !== "none") body[key] = level;
   }

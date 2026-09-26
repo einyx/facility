@@ -357,7 +357,13 @@ environment:
     // Regression: profile-less agents are minted least-privilege tokens, not the
     // App's full maintainer capability.
     expect(credentialRequests.at(-1)).toEqual({
-      permissions: { contents: "write", pull_requests: "write", issues: "read", metadata: "read" },
+      permissions: {
+        contents: "write",
+        pull_requests: "write",
+        issues: "write",
+        actions: "read",
+        metadata: "read",
+      },
     });
     expect(engine.requests[0]).toMatchObject({ nativeSessionId: undefined });
     expect(engine.requests[0]?.prompt).toContain("Implement the first part");

@@ -36,10 +36,10 @@ prove its user journey. The reference journey is:
 - GitHub App installation tokens are narrowed to the project's repositories and,
   since `0.12`, to a per-agent least-privilege permission profile: agents
   without an explicit `permissions` block receive `contents: write`,
-  `pull_requests: write`, `issues: read`, and `metadata: read`; an explicit
-  block may narrow further but never exceeds the App's configured permission
-  set. Authenticated previews and control-plane delivery operations still use
-  the installation's full capability.
+  `pull_requests: write`, `issues: write`, `actions: read`, and
+  `metadata: read`; an explicit block may narrow further but never exceeds the
+  App's configured permission set. Authenticated previews and control-plane
+  delivery operations still use the installation's full capability.
 - Default-branch protection and pull-request review remain the merge boundary.
 - The public deployment contract is portable. Provider-specific production
   infrastructure belongs in a deployment repository.

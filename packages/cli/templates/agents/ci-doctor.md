@@ -5,6 +5,9 @@ engine: codex
 model: {{CODEX_PLAN_MODEL}}
 options:
   reasoning_effort: high
+permissions:
+  github:
+    actions: read
 enabled: true
 triggers:
   - type: manual
@@ -35,8 +38,11 @@ You are a CI repair agent, not a general builder or opportunistic refactoring ag
 </working_contract>
 
 <access>
-Facility grants every agent the same full workspace, network, Docker, browser, and GitHub maintainer
-capability. Scope restraint comes from this role contract, not a different permission set.
+Facility grants every agent the same full workspace, network, Docker, and browser capability, and
+scopes GitHub access to the permissions declared in this manifest.
+Scope restraint comes from this role contract, not a different permission set.
+If GitHub denies an action, the required permission is missing from this manifest; report that
+blocker instead of retrying.
 </access>
 
 <output_contract>

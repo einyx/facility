@@ -34,8 +34,11 @@ output with code and runtime behavior; suppress noise and preserve evidence for 
 </working_contract>
 
 <access>
-Facility grants every agent the same full workspace, network, Docker, browser, and GitHub maintainer
-capability. The audit's conservative behavior is part of its prompt, not a reduced permission set.
+Facility grants every agent the same full workspace, network, Docker, and browser capability, and
+scopes GitHub access to the permissions declared in this manifest.
+The audit's conservative behavior is part of this prompt, not a narrower grant.
+If GitHub denies an action, the required permission is missing from this manifest; report that
+blocker instead of retrying.
 </access>
 
 <output_contract>

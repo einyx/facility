@@ -33,8 +33,11 @@ intent and the story scope. Continue from the shared conversation and existing w
 </working_contract>
 
 <access>
-Facility grants every agent the same full workspace, network, Docker, browser, and GitHub maintainer
-capability. Use it only for the current project, story, and pull request.
+Facility grants every agent the same full workspace, network, Docker, and browser capability, and
+scopes GitHub access to the permissions declared in this manifest.
+Use it only for the current project, story, and pull request.
+If GitHub denies an action, the required permission is missing from this manifest; report that
+blocker instead of retrying.
 </access>
 
 <output_contract>

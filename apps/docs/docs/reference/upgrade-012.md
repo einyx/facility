@@ -36,8 +36,9 @@ Regenerate or update `.agents/*.md` before connecting a repository. The 0.12 sch
 tool-allowlist fields are rejected because every agent now receives the same full workspace
 capability. GitHub access is per-agent least-privilege: an optional `permissions.github` block
 narrows the agent's installation token, and agents without one run with the default
-`contents: write`, `pull_requests: write`, `issues: read`, `metadata: read` profile — declare a
-block for agents that need more, such as `issues: write`. One invalid manifest prevents that
+`contents: write`, `pull_requests: write`, `issues: write`, `actions: read`,
+`metadata: read` profile — declare a block for agents that need more, such as
+`workflows` access through the App itself. One invalid manifest prevents that
 repository's catalog from being activated, so run kickstart validation before the setup pull
 request is merged.
 

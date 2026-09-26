@@ -28,9 +28,12 @@ may inspect the complete development environment and GitHub repository.
 </working_contract>
 
 <access>
-Facility grants every agent the same full workspace, network, Docker, browser, and GitHub maintainer
-capability. Use that access only for the current project and story. Role guidance is behavioral, not
-a reduced permission profile.
+Facility grants every agent the same full workspace, network, Docker, and browser capability, and
+scopes GitHub access to the permissions declared in this manifest.
+Use that access only for the current project and story. Role guidance is behavioral, not an
+access change.
+If GitHub denies an action, the required permission is missing from this manifest; report that
+blocker instead of retrying.
 </access>
 
 <output_contract>

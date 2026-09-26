@@ -123,18 +123,19 @@ describe("agent manifests", () => {
   it("parses an optional GitHub permission profile and rejects unknown keys or levels", () => {
     const scoped = parseAgentManifest(
       manifest(
-        "permissions:\n  github:\n    contents: write\n    pull_requests: read\n    issues: none\n",
+        "permissions:\n  github:\n    contents: write\n    pull_requests: read\n    issues: none\n    actions: read\n",
       ),
       "builder.md",
     );
     expect(scoped.permissions).toEqual({
-      github: { contents: "write", pull_requests: "read", issues: "none" },
+      github: { contents: "write", pull_requests: "read", issues: "none", actions: "read" },
     });
 
     for (const invalid of [
       manifest("permissions:\n  github:\n    workflows: write\n"),
       manifest("permissions:\n  github:\n    contents: admin\n"),
       manifest("permissions:\n  github:\n    metadata: write\n"),
+      manifest("permissions:\n  github:\n    actions: admin\n"),
       manifest("permissions:\n  github:\n    contents: write\n  docker: privileged\n"),
     ]) {
       expect(() => parseAgentManifest(invalid, "builder.md")).toThrow();
@@ -145,7 +146,8 @@ describe("agent manifests", () => {
     expect(resolveAgentGithubPermissions(undefined)).toEqual({
       contents: "write",
       pull_requests: "write",
-      issues: "read",
+      issues: "write",
+      actions: "read",
       metadata: "read",
     });
     expect(
@@ -154,11 +156,12 @@ describe("agent manifests", () => {
           github: { contents: "read", pull_requests: "none", issues: "write" },
         }),
       ),
-    ).toEqual({ contents: "read", issues: "write", metadata: "read" });
+    ).toEqual({ contents: "read", issues: "write", actions: "read", metadata: "read" });
     expect(githubTokenPermissionsBody(resolveAgentGithubPermissions())).toEqual({
       contents: "write",
       pull_requests: "write",
-      issues: "read",
+      issues: "write",
+      actions: "read",
       metadata: "read",
     });
   });

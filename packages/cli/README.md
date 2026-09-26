@@ -36,10 +36,11 @@ npx @theagilemonkeys/facility init --yes \
 
 Existing files are preserved unless `--force` is explicit. Agent manifests may
 declare a `permissions.github` block to narrow the agent's GitHub
-installation-token permissions (`contents`, `pull_requests`, `issues`, and
-`metadata` with `read`, `write`, or `none` levels). Agents without a block run
-with the least-privilege default — commit, push, and open pull requests — and
-no profile ever exceeds the GitHub App's configured permission set.
+installation-token permissions (`contents`, `pull_requests`, `issues`,
+`actions`, and `metadata` with `read`, `write`, or `none` levels). Agents
+without a block run with the least-privilege default — commit, push, open and
+comment on the story pull request, and read checks — and no profile ever
+exceeds the GitHub App's configured permission set.
 
 Init creates `architect`, `builder`, `pr-reviewer`, `address-review`,
 `ci-doctor`, and `security-audit`. Model flags customize the initial templates:
