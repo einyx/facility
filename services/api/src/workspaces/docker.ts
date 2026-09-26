@@ -424,10 +424,7 @@ export class DockerWorkspaceRuntime implements WorkspaceRuntime {
   }
 }
 
-function hostConfig(
-  names: ReturnType<typeof dockerNames>,
-  input: CreateWorkspace,
-) {
+function hostConfig(names: ReturnType<typeof dockerNames>, input: CreateWorkspace) {
   const gatewayPorts = previewGatewayPorts(validateWorkspacePorts(input.ports));
   const config = {
     Init: true,

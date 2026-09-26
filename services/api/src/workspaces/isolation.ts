@@ -21,7 +21,9 @@ export function assertWorkspaceHostBoundary(hostConfig: {
     ...(hostConfig.Binds ?? []).map((bind) => bind.split(":")[0] ?? ""),
     ...(hostConfig.Mounts ?? []).map((mount) => mount.Source ?? ""),
   ];
-  if (sources.some((source) => source === "/var/run/docker.sock" || source.endsWith("/docker.sock"))) {
+  if (
+    sources.some((source) => source === "/var/run/docker.sock" || source.endsWith("/docker.sock"))
+  ) {
     throw new Error("host docker socket must not be mounted into a story workspace");
   }
   if (hostConfig.NetworkMode === "host") {
@@ -29,10 +31,7 @@ export function assertWorkspaceHostBoundary(hostConfig: {
   }
 }
 
-export function assertNoHostDockerSocket(hostConfig: {
-  Binds?: string[];
-  Mounts?: HostMount[];
-}) {
+export function assertNoHostDockerSocket(hostConfig: { Binds?: string[]; Mounts?: HostMount[] }) {
   assertWorkspaceHostBoundary(hostConfig);
 }
 
