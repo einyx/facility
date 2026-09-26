@@ -18,8 +18,7 @@ engine: codex
 model: gpt-5.6-sol
 options:
   reasoning_effort: high
-enabled: true
-triggers:
+enabled: truetriggers:
   - type: manual
   - type: mcp
   - type: ui
@@ -51,12 +50,36 @@ hashed with SHA-256. A turn stores that hash, the source commit, engine, model, 
 | `engine` | Yes | `claude_code` or `codex`. |
 | `model` | Yes | Explicit engine model name, 1–160 characters. |
 | `options` | No | Strict engine options object; defaults to `{}`. |
+| `permissions` | No | Strict GitHub permission profile object; defaults to the least-privilege baseline below. |
 | `enabled` | No | Boolean; defaults to `true`. |
 | `triggers` | Yes | Non-empty array of supported trigger objects. |
 
-Unknown fields are invalid. In particular, `permissions`, `sandbox`, `tools`, and `max_turns` are
-not part of the manifest. Every agent receives the same full workspace, shell, network, Docker,
-browser, Git, and configured GitHub repository capability.
+Unknown fields are invalid. In particular, `sandbox`, `tools`, and `max_turns`
+are not part of the manifest. Every agent receives the same full workspace,
+shell, network, Docker, browser, and Git capability.
+
+## Permissions
+
+The optional `permissions.github` block narrows the GitHub installation token
+minted for the agent's turns. Each entry accepts `read`, `write`, or `none`
+(`metadata` only accepts `read`):
+
+```yaml
+permissions:
+  github:
+    contents: write
+    pull_requests: write
+    issues: read
+    metadata: read
+```
+
+Agents without a block run with the least-privilege default: `contents: write`,
+`pull_requests: write`, `issues: read`, and `metadata: read` — enough to
+commit, push, and open the story pull request. A profile can only narrow the
+GitHub App's configured permission set; requesting a permission the App lacks
+fails token minting with a GitHub error. Authenticated previews and
+control-plane delivery operations are not agent turns and keep the
+installation's full capability.
 
 ## Options
 

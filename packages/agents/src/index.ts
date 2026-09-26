@@ -72,6 +72,64 @@ const GithubTrigger = z
 
 export const AgentTriggerSchema = z.union([InteractiveTrigger, ScheduleTrigger, GithubTrigger]);
 
+const GithubPermissionLevel = z.enum(["read", "write", "none"]);
+
+export type AgentGithubProfile = {
+  contents?: "read" | "write" | "none";
+  pull_requests?: "read" | "write" | "none";
+  issues?: "read" | "write" | "none";
+  metadata?: "read";
+};
+
+/** Least-privilege baseline: commit, push, open pull requests, read issues and metadata. */
+export const DEFAULT_AGENT_GITHUB_PERMISSIONS: Required<AgentGithubProfile> = {
+  contents: "write",
+  pull_requests: "write",
+  issues: "read",
+  metadata: "read",
+};
+
+export const AgentGithubPermissionsSchema = z
+  .object({
+    github: z
+      .object({
+        contents: GithubPermissionLevel.optional(),
+        pull_requests: GithubPermissionLevel.optional(),
+        issues: GithubPermissionLevel.optional(),
+        metadata: z.literal("read").optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+
+export type AgentGithubPermissions = z.infer<typeof AgentGithubPermissionsSchema>;
+
+/**
+ * Resolves an effective GitHub permission profile for an agent. Profile-less
+ * agents get the least-privilege baseline.
+ */
+export function resolveAgentGithubPermissions(
+  permissions?: AgentGithubPermissions,
+): Required<AgentGithubProfile> {
+  return { ...DEFAULT_AGENT_GITHUB_PERMISSIONS, ...permissions?.github };
+}
+
+/**
+ * Maps an effective permission profile onto the `permissions` body accepted by
+ * the installation token endpoint. "none" entries are omitted: GitHub treats an
+ * absent permission as no access. The profile can only narrow the GitHub App's
+ * own configured permission set.
+ */
+export function githubTokenPermissionsBody(profile: AgentGithubProfile): Record<string, string> {
+  const body: Record<string, string> = {};
+  for (const key of ["contents", "pull_requests", "issues", "metadata"] as const) {
+    const level = profile[key];
+    if (level && level !== "none") body[key] = level;
+  }
+  return body;
+}
+
 export const AgentManifestFrontmatterSchema = z
   .object({
     name: AgentNameSchema,
@@ -87,6 +145,7 @@ export const AgentManifestFrontmatterSchema = z
       })
       .strict()
       .default({}),
+    permissions: AgentGithubPermissionsSchema.optional(),
     triggers: z.array(AgentTriggerSchema).min(1),
   })
   .strict();
@@ -210,6 +269,7 @@ export function renderAgentManifest(
     model: input.model,
     enabled: input.enabled,
     options: input.options,
+    permissions: input.permissions,
     triggers: input.triggers,
   });
   const prompt = input.prompt.trim();

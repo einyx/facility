@@ -32,10 +32,14 @@ rollback window have closed.
 ## Update repository contracts
 
 Regenerate or update `.agents/*.md` before connecting a repository. The 0.12 schema accepts only
-`reasoning_effort` under `options`; remove the former `max_turns` field. Permission, sandbox, and
-tool-allowlist fields are also rejected because every agent now receives the same full workspace
-and project GitHub capability. One invalid manifest prevents that repository's catalog from being
-activated, so run kickstart validation before the setup pull request is merged.
+`reasoning_effort` under `options`; remove the former `max_turns` field. Sandbox and
+tool-allowlist fields are rejected because every agent now receives the same full workspace
+capability. GitHub access is per-agent least-privilege: an optional `permissions.github` block
+narrows the agent's installation token, and agents without one run with the default
+`contents: write`, `pull_requests: write`, `issues: read`, `metadata: read` profile — declare a
+block for agents that need more, such as `issues: write`. One invalid manifest prevents that
+repository's catalog from being activated, so run kickstart validation before the setup pull
+request is merged.
 
 Names listed in `.facility.yml` under `environment.secrets` or `environment.variables` now resolve
 only from `FACILITY_PROJECT_<PROJECT_ID>_<NAME>` in the API and worker environment. Move existing

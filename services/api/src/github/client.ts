@@ -46,6 +46,8 @@ export type GithubClientFactory = (installationId: number) => Promise<Octokit>;
 export type GithubMaintainerTokenFactory = (input: {
   installationId: number;
   repositories: string[];
+  /** Narrowed permission set; when omitted the token carries the App's full configured capability. */
+  permissions?: Record<string, string>;
 }) => Promise<{
   token: string;
   expiresAt: string;
@@ -66,9 +68,10 @@ export function createGithubClientFactory(config: AppConfig): GithubClientFactor
 }
 
 /**
- * Mints the installation's complete configured capability, narrowed only to
- * the repositories connected to this Facility project. Permissions remain
- * uniform and maintainer-grade for every agent.
+ * Mints an installation token narrowed to the repositories connected to this
+ * Facility project. When `permissions` is supplied the token carries only that
+ * narrowed set (it can never exceed the App's own configured capability);
+ * without it, the token carries the App's complete maintainer-grade capability.
  */
 export function createGithubMaintainerTokenFactory(
   config: AppConfig,
@@ -88,10 +91,12 @@ export function createGithubMaintainerTokenFactory(
         })
       ).data,
   });
-  return async ({ installationId, repositories }) => {
+  return async ({ installationId, repositories, permissions }) => {
     const response = await app.octokit.request(
       "POST /app/installations/{installation_id}/access_tokens",
-      { installation_id: installationId, repositories },
+      permissions
+        ? { installation_id: installationId, repositories, permissions }
+        : { installation_id: installationId, repositories },
     );
     const token = response.data.token;
     const expiresAt = response.data.expires_at;

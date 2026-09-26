@@ -34,9 +34,12 @@ npx @theagilemonkeys/facility init --yes \
 - `.agents/*.md` describes each agent's prompt, engine, model, and manual, MCP,
   UI, scheduled, or GitHub triggers.
 
-Existing files are preserved unless `--force` is explicit. Agent manifests do
-not contain permission profiles: every enabled agent receives the same full
-workspace and GitHub maintainer capability for the connected project.
+Existing files are preserved unless `--force` is explicit. Agent manifests may
+declare a `permissions.github` block to narrow the agent's GitHub
+installation-token permissions (`contents`, `pull_requests`, `issues`, and
+`metadata` with `read`, `write`, or `none` levels). Agents without a block run
+with the least-privilege default — commit, push, and open pull requests — and
+no profile ever exceeds the GitHub App's configured permission set.
 
 Init creates `architect`, `builder`, `pr-reviewer`, `address-review`,
 `ci-doctor`, and `security-audit`. Model flags customize the initial templates:

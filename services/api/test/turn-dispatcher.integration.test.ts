@@ -79,6 +79,7 @@ describe("turn dispatcher end to end", async () => {
   const projectId = newId("proj");
   const installationRowId = newId("ghi");
   const queuedTurns: string[] = [];
+  const credentialRequests: Array<{ permissions?: Record<string, string> }> = [];
   let rejectEnqueue = false;
   let credentialFailure: unknown;
   const builder = parseAgentManifest(
@@ -306,7 +307,8 @@ environment:
       db,
       storiesService,
       new AgentCatalogService(db, catalogSource),
-      new GithubWorkspaceCredentialBroker(db, async () => {
+      new GithubWorkspaceCredentialBroker(db, async (request) => {
+        credentialRequests.push({ permissions: request.permissions });
         if (credentialFailure) throw credentialFailure;
         return {
           gitIdentity: { name: "my-app[bot]", email: "12345+my-app[bot]@users.noreply.github.com" },
@@ -352,6 +354,11 @@ environment:
     expect(queuedTurns).toEqual([initialTurn.id]);
     const first = await dispatcher.dispatch({ orgId, projectId, turnId: initialTurn.id });
     expect(first).toMatchObject({ claimed: true, state: "succeeded" });
+    // Regression: profile-less agents are minted least-privilege tokens, not the
+    // App's full maintainer capability.
+    expect(credentialRequests.at(-1)).toEqual({
+      permissions: { contents: "write", pull_requests: "write", issues: "read", metadata: "read" },
+    });
     expect(engine.requests[0]).toMatchObject({ nativeSessionId: undefined });
     expect(engine.requests[0]?.prompt).toContain("Implement the first part");
     expect(

@@ -33,7 +33,11 @@ export class GithubWorkspaceCredentialBroker {
     private readonly tokenFactory: GithubMaintainerTokenFactory,
   ) {}
 
-  async issue(orgId: string, projectId: string): Promise<GithubWorkspaceCredentials> {
+  async issue(
+    orgId: string,
+    projectId: string,
+    options?: { permissions?: Record<string, string> },
+  ): Promise<GithubWorkspaceCredentials> {
     const repositories = await this.db
       .select()
       .from(projectRepositories)
@@ -93,6 +97,7 @@ export class GithubWorkspaceCredentialBroker {
             await this.tokenFactory({
               installationId: installation.installationId,
               repositories: names,
+              permissions: options?.permissions,
             }),
           ] as const;
         }),

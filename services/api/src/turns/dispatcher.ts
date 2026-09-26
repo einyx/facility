@@ -1,4 +1,9 @@
-import { type AgentManifest, AgentManifestSchema } from "@facility/agents";
+import {
+  type AgentManifest,
+  AgentManifestSchema,
+  githubTokenPermissionsBody,
+  resolveAgentGithubPermissions,
+} from "@facility/agents";
 import { newId } from "@facility/core";
 import {
   engineSessions,
@@ -149,7 +154,11 @@ export class TurnDispatcher {
         data: { phase: "credentials" },
       });
       const [credential, projectManifest] = await Promise.all([
-        this.credentials.issue(input.orgId, input.projectId),
+        this.credentials.issue(input.orgId, input.projectId, {
+          permissions: githubTokenPermissionsBody(
+            resolveAgentGithubPermissions(manifest.permissions),
+          ),
+        }),
         this.projectManifests.load(input.orgId, input.projectId),
       ]);
       if (this.runtime?.diagnostics) {

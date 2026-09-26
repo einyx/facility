@@ -604,7 +604,7 @@ describe("agent catalog and full GitHub workspace credentials", async () => {
     ).rejects.toMatchObject({ code: "agent_name_invalid", statusCode: 400 });
   });
 
-  it("keeps maintainer permissions while narrowing installation tokens to project repositories", async () => {
+  it("keeps full capability for profile-less broker calls while narrowing tokens to project repositories", async () => {
     const calls: Array<{ installationId: number; repositories: string[] }> = [];
     const broker = new GithubWorkspaceCredentialBroker(db, async (request) => {
       calls.push(request);
@@ -636,6 +636,29 @@ describe("agent catalog and full GitHub workspace credentials", async () => {
       GH_TOKEN: "full-installation-token",
       GIT_CONFIG_VALUE_0: "!facility-git-credential",
     });
+  });
+
+  it("forwards the agent permission profile to every minted installation token", async () => {
+    const calls: Array<{ installationId: number; repositories: string[]; permissions?: unknown }> =
+      [];
+    const broker = new GithubWorkspaceCredentialBroker(db, async (request) => {
+      calls.push(request);
+      return {
+        token: "least-privilege-token",
+        gitIdentity: { name: "my-app[bot]", email: "12345+my-app[bot]@users.noreply.github.com" },
+        expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+      };
+    });
+    const issued = await broker.issue(orgId, projectId, {
+      permissions: { contents: "write", issues: "read", metadata: "read" },
+    });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({
+      installationId: expect.any(Number),
+      repositories: [`app-${suffix}`, `shared-${suffix}`],
+      permissions: { contents: "write", issues: "read", metadata: "read" },
+    });
+    expect(issued.environment.GH_TOKEN).toBe("least-privilege-token");
   });
 
   it("credential helper releases only the token for the requested configured repository", () => {

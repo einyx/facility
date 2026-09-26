@@ -5,12 +5,14 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   AgentManifestError,
+  githubTokenPermissionsBody,
   loadAgentCatalog,
   parseAgentCatalog,
   parseAgentManifest,
   parseProjectSkill,
   parseProjectSkills,
   renderAgentManifest,
+  resolveAgentGithubPermissions,
   triggerIdentity,
 } from "../src/index.js";
 
@@ -118,10 +120,47 @@ describe("agent manifests", () => {
     expect(triggerIdentity(githubTrigger)).toBe("github:assigned-issue");
   });
 
-  it("rejects access controls because every agent has the same fixed capability", () => {
-    expect(() =>
-      parseAgentManifest(manifest("permissions: [contents:read]\n"), "builder.md"),
-    ).toThrow(/Unrecognized key.*permissions/);
+  it("parses an optional GitHub permission profile and rejects unknown keys or levels", () => {
+    const scoped = parseAgentManifest(
+      manifest(
+        "permissions:\n  github:\n    contents: write\n    pull_requests: read\n    issues: none\n",
+      ),
+      "builder.md",
+    );
+    expect(scoped.permissions).toEqual({
+      github: { contents: "write", pull_requests: "read", issues: "none" },
+    });
+
+    for (const invalid of [
+      manifest("permissions:\n  github:\n    workflows: write\n"),
+      manifest("permissions:\n  github:\n    contents: admin\n"),
+      manifest("permissions:\n  github:\n    metadata: write\n"),
+      manifest("permissions:\n  github:\n    contents: write\n  docker: privileged\n"),
+    ]) {
+      expect(() => parseAgentManifest(invalid, "builder.md")).toThrow();
+    }
+  });
+
+  it("resolves profile-less agents to the least-privilege default and maps token bodies", () => {
+    expect(resolveAgentGithubPermissions(undefined)).toEqual({
+      contents: "write",
+      pull_requests: "write",
+      issues: "read",
+      metadata: "read",
+    });
+    expect(
+      githubTokenPermissionsBody(
+        resolveAgentGithubPermissions({
+          github: { contents: "read", pull_requests: "none", issues: "write" },
+        }),
+      ),
+    ).toEqual({ contents: "read", issues: "write", metadata: "read" });
+    expect(githubTokenPermissionsBody(resolveAgentGithubPermissions())).toEqual({
+      contents: "write",
+      pull_requests: "write",
+      issues: "read",
+      metadata: "read",
+    });
   });
 
   it("allows reasoning effort as the only execution option and renders canonical source", () => {
