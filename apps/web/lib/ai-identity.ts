@@ -8,6 +8,12 @@ export type AiIdentity = {
 const ENGINE_IDENTITIES: Record<string, AiIdentity> = {
   claude_code: { brand: "claude", label: "Claude Code" },
   codex: { brand: "openai", label: "Codex" },
+  ollama: { brand: null, label: "Ollama" },
+};
+
+export const ENGINE_PROVIDERS: Record<string, string> = {
+  claude_code: "anthropic",
+  codex: "openai",
 };
 
 const MODEL_IDENTITIES: Record<string, AiIdentity> = {

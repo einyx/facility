@@ -13,6 +13,12 @@ export const AgentNameSchema = z
   .max(64)
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "must be a lowercase kebab-case name");
 
+// Built-ins are claude_code and codex; operator plugins add others. Unknown names
+// fail at run time. The turns/engine_sessions CHECK constraints use the same pattern.
+export const AgentEngineNameSchema = z
+  .string()
+  .regex(/^[a-z][a-z0-9_]{0,63}$/, "must be a snake_case engine name");
+
 const InteractiveTrigger = z.object({ type: z.enum(["manual", "mcp", "ui"]) }).strict();
 
 const ScheduleTrigger = z
@@ -76,7 +82,7 @@ export const AgentManifestFrontmatterSchema = z
   .object({
     name: AgentNameSchema,
     description: z.string().min(1).max(240),
-    engine: z.enum(["claude_code", "codex", "ollama"]),
+    engine: AgentEngineNameSchema,
     model: z.string().min(1).max(160),
     enabled: z.boolean().default(true),
     options: z

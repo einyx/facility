@@ -2,6 +2,7 @@ import { Eyebrow, StatusDot } from "@facility/ui";
 import { AgentEditor } from "@/components/agents/agent-editor";
 import { ErrorNotice, Offline } from "@/components/offline";
 import { LiveRefresh } from "@/components/shell/live-refresh";
+import { engineIdentity } from "@/lib/ai-identity";
 import { api, type ProjectSkill, type StoryAgent } from "@/lib/api";
 import { can } from "@/lib/permissions";
 
@@ -118,9 +119,7 @@ function AgentCard({
 
       <dl className="grid grid-cols-[72px_minmax(0,1fr)] gap-x-3 gap-y-2 text-[11.5px]">
         <dt className="text-(--dim)">engine</dt>
-        <dd className="font-mono text-(--ink)">
-          {agent.engine === "claude_code" ? "Claude Code" : "Codex"}
-        </dd>
+        <dd className="font-mono text-(--ink)">{engineIdentity(agent.engine).label}</dd>
         <dt className="text-(--dim)">model</dt>
         <dd className="break-all font-mono text-(--ink)">{agent.model}</dd>
         <dt className="text-(--dim)">source</dt>

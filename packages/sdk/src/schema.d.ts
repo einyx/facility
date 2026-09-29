@@ -7090,8 +7090,7 @@ export interface operations {
                 "application/json": {
                     expected_commit_sha: string;
                     description: string;
-                    /** @enum {string} */
-                    engine: "claude_code" | "codex";
+                    engine: string;
                     model: string;
                     /** @enum {string|null} */
                     reasoning_effort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max" | "ultra" | null;

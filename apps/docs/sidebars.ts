@@ -27,6 +27,7 @@ const sidebars: SidebarsConfig = {
         "self-host/aws",
         "self-host/authentication",
         "self-host/github-app",
+        "self-host/engine-plugins",
       ],
     },
     {

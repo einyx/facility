@@ -5,6 +5,7 @@ import pino from "pino";
 import { readConfig } from "./config.js";
 import { createGithubClientFactory } from "./github/client.js";
 import { registerGithubWebhookWorker } from "./github/webhook-worker.js";
+import { loadPlugins } from "./plugin.js";
 import { StoryIntegrationNotifications } from "./stories/integration-notifications.js";
 import type { StoryWorkspaceService } from "./stories/service.js";
 import type { StoryTitleService } from "./stories/titles.js";
@@ -30,6 +31,7 @@ export async function startWorker() {
     db,
     config,
     githubFactory,
+    plugins: await loadPlugins(config.pluginPaths ?? []),
     enqueue: (queue, data) => boss.send(queue, data),
   });
   const queues = [

@@ -79,6 +79,7 @@ const EnvSchema = z
     GITHUB_CLONE_TOKEN: z.string().optional(),
     LOG_LEVEL: z.string().default("info"),
     NODE_ENV: z.string().optional(),
+    FACILITY_PLUGINS: z.string().optional(),
   })
   .superRefine((env, ctx) => {
     if (env.FACILITY_NATIVE_PREVIEWS === "1") {
@@ -326,6 +327,11 @@ export function readConfig(env = process.env): AppConfig {
     githubAppSlug: parsed.GITHUB_APP_SLUG,
     githubCloneToken: parsed.GITHUB_CLONE_TOKEN,
     logLevel: parsed.LOG_LEVEL,
+    pluginPaths: parsed.FACILITY_PLUGINS
+      ? parsed.FACILITY_PLUGINS.split(",")
+          .map((p) => p.trim())
+          .filter(Boolean)
+      : [],
   };
 }
 
