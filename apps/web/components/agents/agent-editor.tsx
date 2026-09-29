@@ -83,6 +83,10 @@ export function AgentEditor({ projectId, agent }: { projectId: string; agent: St
             >
               <option value="claude_code">Claude Code</option>
               <option value="codex">Codex</option>
+              <option value="ollama">Ollama</option>
+              {!["claude_code", "codex", "ollama"].includes(agent.engine) && (
+                <option value={agent.engine}>{agent.engine}</option>
+              )}
             </Select>
           </Field>
           <Field label="Model">

@@ -1,4 +1,4 @@
-import { engineIdentity, providerIdentity } from "./ai-identity";
+import { ENGINE_PROVIDERS, engineIdentity, providerIdentity } from "./ai-identity";
 import type { BacklogItem, BacklogPhase, BacklogQuery, StoryAgent } from "./api";
 
 /**
@@ -216,7 +216,7 @@ export function agentChoices(agents: StoryAgent[], defaultName: string | null): 
       name: agent.name,
       description: agent.description,
       engine: engineIdentity(agent.engine),
-      provider: providerIdentity(agent.engine === "claude_code" ? "anthropic" : "openai"),
+      provider: providerIdentity(ENGINE_PROVIDERS[agent.engine] ?? agent.engine),
       model: agent.model,
       isDefault: agent.name === defaultName,
     }))

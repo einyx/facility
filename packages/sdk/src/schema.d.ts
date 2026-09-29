@@ -525,6 +525,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/projects/{projectId}/attention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get attention */
+        get: operations["listProjectAttention"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/projects/{projectId}/workspace-stories/{storyId}/integration-state": {
         parameters: {
             query?: never;
@@ -6036,6 +6053,142 @@ export interface operations {
             };
         };
     };
+    listProjectAttention: {
+        parameters: {
+            query?: {
+                status?: "open" | "resolved" | "all";
+                kind?: string[];
+                q?: string;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: date-time */
+                        generatedAt: string;
+                        total: number;
+                        limit: number;
+                        offset: number;
+                        counts: {
+                            open: number;
+                            resolved: number;
+                        };
+                        facets: {
+                            kinds: {
+                                kind: string;
+                                count: number;
+                            }[];
+                        };
+                        items: {
+                            storyId: string;
+                            storyTitle: string;
+                            /** @enum {string} */
+                            storyStatus: "ready" | "working" | "attention" | "review" | "done" | "archived";
+                            id: string;
+                            turnId: string | null;
+                            kind: string;
+                            title: string;
+                            detail: string | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** @enum {string|null} */
+                            action: "reply" | "retry" | "dismiss" | null;
+                            /** @enum {string} */
+                            status: "open" | "resolved";
+                            resolution: string | null;
+                            /** Format: date-time */
+                            resolvedAt: string | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description The request is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authentication is required or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The authenticated principal lacks the required permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The resource was not found or is outside the principal scope. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The request conflicts with current resource state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The request rate limit was exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A required service is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     updateStoryIntegrationState: {
         parameters: {
             query?: never;
@@ -7090,8 +7243,7 @@ export interface operations {
                 "application/json": {
                     expected_commit_sha: string;
                     description: string;
-                    /** @enum {string} */
-                    engine: "claude_code" | "codex";
+                    engine: string;
                     model: string;
                     /** @enum {string|null} */
                     reasoning_effort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max" | "ultra" | null;

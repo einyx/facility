@@ -1,5 +1,6 @@
 import type { AgentManifest } from "@facility/agents";
 import { mintModelProxyToken } from "../model-proxy/proxy.js";
+import type { PluginEngine, PluginEventParser } from "../plugin.js";
 import type {
   WorkspaceCommandResult,
   WorkspaceLocator,
@@ -20,7 +21,7 @@ export type AgentTurnRequest = {
 };
 
 export type AgentTurnEvent = {
-  engine: "claude_code" | "codex" | "ollama";
+  engine: string;
   type: string;
   data: Record<string, unknown>;
 };
@@ -49,7 +50,7 @@ export type AgentTurnUsage = {
 };
 
 export interface AgentEngine {
-  readonly name: "claude_code" | "codex" | "ollama";
+  readonly name: string;
   run(request: AgentTurnRequest): Promise<AgentTurnResult>;
 }
 
@@ -65,7 +66,7 @@ export class AgentEngineError extends Error {
 }
 
 abstract class CliAgentEngine implements AgentEngine {
-  abstract readonly name: "claude_code" | "codex" | "ollama";
+  abstract readonly name: string;
   abstract run(request: AgentTurnRequest): Promise<AgentTurnResult>;
 
   constructor(protected readonly runtime: WorkspaceRuntime) {}
@@ -283,11 +284,43 @@ export class OllamaEngine extends CliAgentEngine {
   }
 }
 
+export class PluginCliEngine extends CliAgentEngine {
+  constructor(
+    runtime: WorkspaceRuntime,
+    readonly name: string,
+    private readonly spec: PluginEngine,
+  ) {
+    super(runtime);
+  }
+
+  async run(request: AgentTurnRequest): Promise<AgentTurnResult> {
+    const args = this.spec.args({
+      prompt: request.prompt,
+      model: request.manifest.model,
+      nativeSessionId: request.nativeSessionId,
+      options: request.manifest.options,
+    });
+    return this.execute(
+      request,
+      this.spec.command,
+      args,
+      new PluginEngineEventParser(this.name, this.spec.parser()),
+    );
+  }
+}
+
 export class AgentEngineRegistry {
-  private readonly engines: Map<string, AgentEngine>;
+  private readonly engines = new Map<string, AgentEngine>();
 
   constructor(engines: AgentEngine[]) {
-    this.engines = new Map(engines.map((engine) => [engine.name, engine]));
+    for (const engine of engines) {
+      if (this.engines.has(engine.name))
+        throw new AgentEngineError(
+          "agent_engine_duplicate",
+          `engine ${engine.name} is registered twice`,
+        );
+      this.engines.set(engine.name, engine);
+    }
   }
 
   get(name: AgentManifest["engine"]): AgentEngine {
@@ -335,7 +368,7 @@ const INTERRUPTED_PROCESS_CLEANUP = [
   'rm -f "$marker"',
 ].join("\n");
 
-type ParsedEngineEvents = {
+export type ParsedEngineEvents = {
   sessionId?: string;
   output: string;
   progress: string[];
@@ -388,6 +421,24 @@ abstract class EngineEventParser {
 
   protected abstract accept(value: Record<string, unknown>): void;
   abstract result(): ParsedEngineEvents;
+}
+
+class PluginEngineEventParser extends EngineEventParser {
+  constructor(
+    private readonly engine: string,
+    private readonly inner: PluginEventParser,
+  ) {
+    super();
+  }
+
+  protected accept(value: Record<string, unknown>) {
+    for (const event of this.inner.accept(value) ?? [])
+      this.events.push({ ...event, engine: this.engine });
+  }
+
+  result(): ParsedEngineEvents {
+    return { ...this.inner.result(), events: this.events };
+  }
 }
 
 /**

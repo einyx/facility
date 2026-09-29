@@ -35,6 +35,7 @@ import {
   AgentEngineRegistry,
   type AgentTurnRequest,
   type AgentTurnResult,
+  PluginCliEngine,
 } from "../src/turns/engines.js";
 import { TurnGitEvidenceService } from "../src/turns/git-evidence.js";
 import { LiveTurnEvents } from "../src/turns/live-events.js";
@@ -97,6 +98,7 @@ Implement the request and verify it.
 `,
     ".agents/builder.md",
   );
+  const echoer = parseAgentManifest(agentSource("echoer", "echo_cli"), ".agents/echoer.md");
   const projectManifest = parseProjectManifest(`
 version: 1
 repositories:
@@ -298,7 +300,10 @@ environment:
     const catalogSource: AgentCatalogSource = {
       load: async () => ({
         commitSha: "a".repeat(40),
-        sources: [{ file: builder.file, source: agentSource(builder.name) }],
+        sources: [
+          { file: builder.file, source: agentSource(builder.name) },
+          { file: echoer.file, source: agentSource(echoer.name, "echo_cli") },
+        ],
       }),
     };
     const manifestSource: ProjectManifestSource = { load: async () => projectManifest };
@@ -322,7 +327,29 @@ environment:
         (_projectId, name) => (name === "FACILITY_DISPATCH_SECRET" ? "project-secret" : undefined),
         async () => ({ SHORT_VALUE: "0", FLAG_VALUE: "true", QUOTED_VALUE: 'a"b' }),
       ),
-      new AgentEngineRegistry([engine]),
+      new AgentEngineRegistry([
+        engine,
+        new PluginCliEngine(runtime, "echo_cli", {
+          command: "sh",
+          args: ({ prompt }) => [
+            "-c",
+            `printf '%s\\n' '{"session":"plugin-session","text":"plugin done"}'`,
+            prompt,
+          ],
+          parser: () => {
+            let sessionId: string | undefined;
+            let output = "";
+            return {
+              accept(event) {
+                if (typeof event.session === "string") sessionId = event.session;
+                if (typeof event.text === "string") output = event.text;
+                return [{ engine: "echo_cli", type: "message", data: event }];
+              },
+              result: () => ({ sessionId, output, progress: [], events: [] }),
+            };
+          },
+        }),
+      ]),
       new TurnGitEvidenceService(db, runtime),
       undefined,
       runtime,
@@ -441,6 +468,43 @@ environment:
     expect(
       await runtime.read(firstRequest.workspace, `repos/${owner}/${repository}/agent-work`),
     ).toBe("turn-1turn-2");
+  });
+
+  it("runs a turn on an operator plugin engine and persists its native session", async () => {
+    const started = await storiesService.start({
+      orgId,
+      projectId,
+      provider: "github",
+      externalId: `plugin-${suffix}`,
+      title: "Plugin engine story",
+      agent: echoer,
+      message: "Say hello",
+      messageDedupeKey: `plugin-start-${suffix}`,
+      actor: { type: "user", id: "user_test" },
+      workspace: { image: "facility-runner:test", ports: [{ service: "app", port: 3000 }] },
+    });
+    const turn = started.queued.turn;
+    if (!turn) throw new Error("expected queued plugin turn");
+    await expect(dispatcher.dispatch({ orgId, projectId, turnId: turn.id })).resolves.toMatchObject(
+      {
+        claimed: true,
+        state: "succeeded",
+      },
+    );
+    expect((await db.select().from(turns).where(eq(turns.id, turn.id)))[0]).toMatchObject({
+      engine: "echo_cli",
+    });
+    expect(
+      (
+        await db.select().from(engineSessions).where(eq(engineSessions.storyId, started.story.id))
+      )[0],
+    ).toMatchObject({
+      engine: "echo_cli",
+      nativeSessionId: "plugin-session",
+      statePath: "/workspace/.facility/echo_cli",
+    });
+    const messages = await storiesService.conversation(orgId, projectId, started.story.id);
+    expect(messages.at(-1)).toMatchObject({ role: "agent", body: "plugin done" });
   });
 
   it("blocks an exhausted project budget before invoking the agent engine", async () => {
@@ -1306,11 +1370,11 @@ async function waitFor(predicate: () => boolean) {
   throw new Error("condition was not met before timeout");
 }
 
-function agentSource(name: string) {
+function agentSource(name: string, engine = "codex") {
   return `---
 name: ${name}
 description: Implements stories.
-engine: codex
+engine: ${engine}
 model: gpt-5.5
 enabled: true
 options:

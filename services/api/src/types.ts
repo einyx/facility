@@ -59,6 +59,7 @@ export type AppConfig = {
   githubAppSlug?: string;
   githubCloneToken?: string;
   logLevel: string;
+  pluginPaths?: string[];
 };
 
 export type ExternalIdentity = {

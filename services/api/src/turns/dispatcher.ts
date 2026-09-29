@@ -695,10 +695,7 @@ export class TurnDispatcher {
         engine: input.manifest.engine,
         model: input.manifest.model,
         nativeSessionId: input.nativeSessionId,
-        statePath:
-          input.manifest.engine === "claude_code"
-            ? "/workspace/.facility/claude"
-            : "/workspace/.facility/codex",
+        statePath: `/workspace/.facility/${input.manifest.engine === "claude_code" ? "claude" : input.manifest.engine}`,
         lastTurnId: input.turnId,
       })
       .onConflictDoUpdate({

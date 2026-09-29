@@ -39,6 +39,7 @@ import {
   type OpenApiRouteRecord,
 } from "./openapi-contract.js";
 import { assertPreviewOriginSurface } from "./origin-isolation.js";
+import type { FacilityPlugin } from "./plugin.js";
 import { safeRequestLog } from "./request-log.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerGithubRoutes } from "./routes/github.js";
@@ -63,6 +64,7 @@ export async function buildApp(
     rateLimitMax?: number;
     authFetch?: typeof fetch;
     storyDomain?: StoryDomain;
+    plugins?: FacilityPlugin[];
   } = {},
 ): Promise<FastifyInstance> {
   const oauthConfig = oauthConfigFromApp(config);
@@ -81,6 +83,7 @@ export async function buildApp(
         db,
         config,
         enqueue: (queue, data) => app.enqueue(queue, data),
+        plugins: deps.plugins,
       }),
   );
 

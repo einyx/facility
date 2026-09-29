@@ -55,6 +55,7 @@ Facility's MCP OAuth server is enabled, `FACILITY_OAUTH_ISSUER` must equal the `
 | `GITHUB_APP_SLUG` | GitHub App identity used by installation flows. |
 | `FACILITY_OAUTH_JWKS` | Private ES256 JWK set when interactive MCP OAuth is enabled. |
 | `LOG_LEVEL` | Structured service log level. |
+| `FACILITY_PLUGINS` | Optional comma-separated [engine plugin](engine-plugins.md) modules, set on API and worker. |
 
 Vercel workspaces also require `VERCEL_TEAM_ID`, `VERCEL_PROJECT_ID`, and either
 `VERCEL_OIDC_TOKEN` or `VERCEL_TOKEN`; the OIDC token takes precedence. Docker workspaces require
